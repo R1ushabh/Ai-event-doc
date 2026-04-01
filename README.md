@@ -1,11 +1,29 @@
-<div align="center">
+# EventForge AI
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+An AI-Based Event Document Generator.
 
-  <h1>Built with AI Studio</h2>
+## Architecture Adaptation
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+The requested architecture was Next.js 14 and Python FastAPI. However, the AI Studio runtime environment requires a Node.js-based module system (TypeScript, Vite, Express) running on a single port (3000). 
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+To ensure the application runs perfectly in this environment while maintaining the exact requested functionality, the architecture has been adapted to:
+- **Frontend**: React 19, Vite, Tailwind CSS, Framer Motion, Lucide React
+- **Backend**: Node.js, Express, TypeScript, Google GenAI SDK
 
-</div>
+The folder structure and component hierarchy have been preserved as closely as possible to the original request:
+- `src/components/` contains all the requested UI components (Sidebar, Topbar, EventInputCard, etc.)
+- `backend/` contains all the requested backend services (gemini_client, event_extractor, generators, exporters)
+- `server.ts` acts as the main entry point (replacing `main.py`)
+
+## Features
+- **Quick Paste & Structured Form**: Input event details easily.
+- **AI Document Generation**: Instantly generate 8 professional documents (Proposal, Flyer, Attendance, Budget, Timeline, Report, Summary, Analytics).
+- **Export**: Download documents as DOCX, PDF, or CSV.
+
+## Tech Stack
+- React + Vite
+- Express.js
+- Tailwind CSS
+- Framer Motion
+- Google Generative AI SDK (Gemini 2.0 Flash)
+- docx, pdfkit, csv-writer
