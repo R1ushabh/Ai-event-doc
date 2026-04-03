@@ -1,31 +1,54 @@
 export interface EventDetails {
   event_name: string;
   event_type: string;
-  date?: string;
-  time?: string;
-  venue?: string;
-  organizer?: string;
-  department?: string;
-  speaker?: string;
-  theme?: string;
-  target_audience?: string;
-  expected_participants?: number;
-  activities?: string;
-  budget_preference?: string;
-  event_mode?: string;
-  raw_description?: string;
+  date: string | null;
+  time: string | null;
+  venue: string | null;
+  organizer: string | null;
+  department: string | null;
+  speaker: string | null;
+  theme: string | null;
+  target_audience: string | null;
+  expected_participants: number | null;
+  activities: string | null;
+  event_mode: string;
+  budget_preference?: 'low' | 'medium' | 'high';
+}
+
+export type DocType = 'proposal' | 'flyer' | 'budget' | 'timeline' | 'report' | 'attendance' | 'summary' | 'analytics';
+
+export type AgentStatus = 'idle' | 'processing' | 'done' | 'error';
+
+export interface BudgetCategory {
+  name: string;
+  amount: number;
+  items: string;
+}
+
+export interface BudgetJSON {
+  total: number;
+  per_participant: number;
+  categories: BudgetCategory[];
 }
 
 export interface DocumentOutput {
-  type: string;
+  type: DocType;
   title: string;
   content: string;
-  metadata?: Record<string, any>;
+  budgetData?: BudgetJSON;
 }
 
-export interface GenerationResponse {
-  success: boolean;
-  event_summary: Record<string, any>;
-  documents: DocumentOutput[];
-  generation_time: number;
+export interface AgentState {
+  name: string;
+  docs: DocType[];
+  status: AgentStatus;
+}
+
+export interface AppState {
+  eventDetails: EventDetails | null;
+  selectedDocs: DocType[];
+  isExtracting: boolean;
+  isGenerating: boolean;
+  outputs: Partial<Record<DocType, DocumentOutput>>;
+  agents: AgentState[];
 }

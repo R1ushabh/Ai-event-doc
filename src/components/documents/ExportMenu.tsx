@@ -1,56 +1,74 @@
-import React, { useState } from 'react';
-import { Download, FileText, File as FilePdf, Table } from 'lucide-react';
-import { api } from '../../lib/api';
+import React, { useState, useRef, useEffect } from 'react';
+import { Download, ChevronDown, FileText, FileCode, FileType } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ExportMenuProps {
-  documentId?: string;
+  onPrint: () => void;
+  onDownloadTxt: () => void;
 }
 
-export function ExportMenu({ documentId }: ExportMenuProps) {
+const ExportMenu: React.FC<ExportMenuProps> = ({ onPrint, onDownloadTxt }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  if (!documentId) return null;
-
-  const handleExport = (type: 'docx' | 'pdf' | 'csv') => {
-    window.open(api.getExportUrl(type, documentId), '_blank');
-    setIsOpen(false);
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-sm"
       >
-        <Download size={14} />
+        <Download className="w-3.5 h-3.5" />
         Export
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 py-1">
-          <button
-            onClick={() => handleExport('docx')}
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 4 }}
+            transition={{ duration: 0.1 }}
+            className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden"
           >
-            <FileText size={16} className="text-blue-600" />
-            Word Document (.docx)
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <FilePdf size={16} className="text-red-600" />
-            PDF Document (.pdf)
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <Table size={16} className="text-green-600" />
-            CSV Spreadsheet (.csv)
-          </button>
-        </div>
-      )}
+            <div className="p-1">
+              <button
+                onClick={() => { onPrint(); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors"
+              >
+                <FileType className="w-4 h-4 text-gray-400" />
+                Download PDF
+              </button>
+              <button
+                onClick={() => { onDownloadTxt(); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors"
+              >
+                <FileText className="w-4 h-4 text-gray-400" />
+                Download TXT
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors"
+              >
+                <FileCode className="w-4 h-4 text-gray-400" />
+                Download JSON
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
+
+export default ExportMenu;

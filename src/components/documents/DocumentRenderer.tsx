@@ -1,430 +1,134 @@
 import React from 'react';
-import Markdown from 'react-markdown';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { FileText, Users, DollarSign, Calendar, TrendingUp, Info, CheckCircle2, MapPin, Clock, User } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { cn } from '@/lib/utils';
+import { DocType } from '@/ai/types';
 
 interface DocumentRendererProps {
-  type: string;
+  type: DocType;
   content: string;
-  eventDetails?: any;
+  theme?: string;
+  className?: string;
 }
 
-const COLORS = ['#4f46e5', '#818cf8', '#c7d2fe', '#e0e7ff', '#f5f3ff'];
+export const DocumentRenderer: React.FC<DocumentRendererProps> = ({ type, content, theme = '', className }) => {
+  if (!content) return null;
 
-export function DocumentRenderer({ type, content, eventDetails }: DocumentRendererProps) {
-  const t = type.toLowerCase();
-
-  // Helper to parse JSON content safely
-  const parseJSON = (jsonStr: string) => {
-    try {
-      return JSON.parse(jsonStr);
-    } catch (e) {
-      console.error('Failed to parse JSON content:', e);
-      return null;
-    }
-  };
-
-  if (t === 'flyer') {
-    return <FlyerRenderer content={content} eventDetails={eventDetails} />;
-  }
-
-  if (t === 'attendance') {
-    return <AttendanceRenderer eventDetails={eventDetails} />;
-  }
-
-  if (t === 'budget') {
-    const data = parseJSON(content);
-    return data ? <BudgetRenderer data={data} /> : <MarkdownRenderer content={content} />;
-  }
-
-  if (t === 'timeline') {
-    const data = parseJSON(content);
-    return data ? <TimelineRenderer data={data} /> : <MarkdownRenderer content={content} />;
-  }
-
-  if (t === 'analytics') {
-    const data = parseJSON(content);
-    return data ? <AnalyticsRenderer data={data} /> : <MarkdownRenderer content={content} />;
-  }
-
-  if (t === 'summary') {
-    const data = parseJSON(content);
-    return data ? <SummaryRenderer data={data} /> : <MarkdownRenderer content={content} />;
-  }
-
-  return <MarkdownRenderer content={content} />;
-}
-
-function MarkdownRenderer({ content }: { content: string }) {
-  return (
-    <div 
-      className="markdown-body prose prose-indigo max-w-4xl mx-auto p-12 bg-white shadow-2xl rounded-2xl border border-gray-100 min-h-full outline-none"
-      contentEditable
-      suppressContentEditableWarning
-    >
-      <Markdown>{content}</Markdown>
-    </div>
-  );
-}
-
-function FlyerRenderer({ content, eventDetails }: { content: string; eventDetails?: any }) {
-  return (
-    <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100 relative">
-      <div className="absolute inset-0 opacity-5 pointer-events-none overflow-hidden">
-        <img 
-          src="https://picsum.photos/seed/event/1200/1600" 
-          alt="Background" 
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      </div>
-      
-      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-12 text-center text-white relative z-10">
-        <h1 className="text-6xl font-display uppercase mb-4 leading-none tracking-tighter">
-          {eventDetails?.event_name || 'THE EVENT'}
-        </h1>
-        <p className="text-xl font-serif italic text-indigo-100 tracking-widest uppercase">
-          {eventDetails?.theme || 'Join us for an unforgettable experience'}
-        </p>
-      </div>
-
-      <div className="p-10 space-y-10 relative z-10">
-        <div 
-          className="markdown-body prose prose-indigo max-w-none text-center outline-none"
-          contentEditable
-          suppressContentEditableWarning
-        >
-          <Markdown>{content}</Markdown>
-        </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-gray-50 p-6 rounded-2xl flex items-center gap-4 border border-gray-100">
-            <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600">
-              <Calendar size={24} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date & Time</p>
-              <p className="text-sm font-bold text-gray-900">{eventDetails?.date || 'TBD'}</p>
-              <p className="text-xs text-gray-500">{eventDetails?.time || 'TBD'}</p>
-            </div>
-          </div>
-          <div className="bg-gray-50 p-6 rounded-2xl flex items-center gap-4 border border-gray-100">
-            <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600">
-              <MapPin size={24} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</p>
-              <p className="text-sm font-bold text-gray-900">{eventDetails?.venue || 'TBD'}</p>
-            </div>
-          </div>
-        </div>
-
-        {eventDetails?.speaker && (
-          <div className="bg-indigo-50 p-8 rounded-3xl border border-indigo-100">
-            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4">Featured Speaker</h3>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-600 font-bold text-xl">
-                {eventDetails.speaker[0]}
-              </div>
-              <div>
-                <p className="font-bold text-gray-900">{eventDetails.speaker}</p>
-                <p className="text-sm text-indigo-600">Keynote Guest</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="text-center pt-6">
-          <button className="px-10 py-4 bg-indigo-600 text-white rounded-full font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 transform hover:-translate-y-1">
-            Register Now
-          </button>
-          <p className="mt-4 text-xs text-gray-400 font-medium">
-            Organized by {eventDetails?.organizer || 'EventForge AI'}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AttendanceRenderer({ eventDetails }: { eventDetails?: any }) {
-  const rows = Array.from({ length: 30 });
+  const isPokemon = theme.toLowerCase().includes('pokemon');
+  const isGrass = isPokemon && (theme.toLowerCase().includes('grass') || theme.toLowerCase().includes('nature'));
+  const isFire = isPokemon && (theme.toLowerCase().includes('fire') || theme.toLowerCase().includes('blaze'));
   
-  return (
-    <div className="bg-white p-12 shadow-lg rounded-xl border border-gray-200 print:shadow-none print:border-none">
-      <div className="border-b-2 border-gray-900 pb-6 mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 uppercase tracking-tight mb-2">
-          {eventDetails?.event_name || 'Event'} - Attendance Sheet
-        </h1>
-        <div className="flex justify-center gap-8 text-sm font-medium text-gray-600">
-          <p>Date: {eventDetails?.date || '__________'}</p>
-          <p>Venue: {eventDetails?.venue || '__________'}</p>
-          <p>Organizer: {eventDetails?.organizer || '__________'}</p>
-        </div>
-      </div>
+  const isCyberpunk = theme.toLowerCase().includes('cyberpunk');
+  const isRetro = theme.toLowerCase().includes('retro') || theme.toLowerCase().includes('80s');
+  const isCorporate = theme.toLowerCase().includes('corporate') || theme.toLowerCase().includes('elegant');
+  const isFestival = theme.toLowerCase().includes('festival') || theme.toLowerCase().includes('vibrant');
+  
+  const isFlyer = type === 'flyer';
 
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-gray-50">
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase w-12">S.No</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase">Name</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase w-32">Roll No/ID</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase w-32">Dept/Year</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase w-32">Contact</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase">Email</th>
-            <th className="border border-gray-300 p-2 text-xs font-bold uppercase w-32">Signature</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((_, i) => (
-            <tr key={i} className="h-10">
-              <td className="border border-gray-300 p-2 text-center text-xs text-gray-500">{i + 1}</td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2"></td>
-              <td className="border border-gray-300 p-2"></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      <div className="mt-8 flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-        <p>Verified By: ____________________</p>
-        <p>Stamp: ____________________</p>
+  return (
+    <div className={cn(
+      "w-full bg-white p-12 md:p-16 text-gray-900 font-sans relative overflow-hidden",
+      isFlyer && "min-h-[1000px] flex flex-col",
+      isPokemon && "border-8 border-red-600",
+      isGrass && "border-green-600 bg-green-50",
+      isFire && "border-orange-600 bg-orange-50",
+      isCyberpunk && "bg-gray-900 text-cyan-400 border-4 border-magenta-500",
+      isRetro && "bg-pink-50 border-4 border-yellow-400",
+      isCorporate && "border-t-[20px] border-slate-900 font-serif",
+      isFestival && "bg-orange-50 border-x-[12px] border-orange-500",
+      className
+    )}>
+      {/* Decorative Elements for Themes */}
+      {isPokemon && isFlyer && (
+        <>
+          <div className={cn("absolute top-0 left-0 w-full h-12 z-0", isGrass ? "bg-green-600" : isFire ? "bg-orange-600" : "bg-red-600")} />
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white border-8 border-gray-900 rounded-full z-10 flex items-center justify-center">
+            <div className="w-6 h-6 bg-gray-900 rounded-full" />
+          </div>
+          <div className="absolute top-12 left-0 w-full h-2 bg-gray-900 z-0" />
+          
+          {/* Corner Pokeballs */}
+          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute -top-4 -left-4 w-20 h-20 opacity-20 rotate-12" />
+          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute -bottom-4 -right-4 w-24 h-24 opacity-20 -rotate-12" />
+          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute top-1/2 -left-10 w-32 h-32 opacity-10" />
+          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute top-1/4 -right-10 w-16 h-16 opacity-10" />
+        </>
+      )}
+
+      {isCorporate && isFlyer && (
+        <>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-100 -rotate-45 translate-x-32 -translate-y-32" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 border-l border-b border-slate-200" />
+        </>
+      )}
+
+      {isFestival && isFlyer && (
+        <>
+          <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-orange-500 via-yellow-400 to-red-500" />
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-yellow-400/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-orange-500/10 rounded-full blur-3xl" />
+        </>
+      )}
+
+      {isCyberpunk && isFlyer && (
+        <>
+          <div className="absolute top-0 left-0 w-full h-1 bg-cyan-400 shadow-[0_0_10px_cyan]" />
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-magenta-500 shadow-[0_0_10px_magenta]" />
+          <div className="absolute top-10 right-10 w-20 h-20 border border-cyan-400/30 rotate-45" />
+          <div className="absolute bottom-20 left-10 w-32 h-32 border border-magenta-500/20 -rotate-12" />
+        </>
+      )}
+
+      <div className={cn(
+        "relative z-10",
+        "prose prose-purple max-w-none",
+        isCyberpunk && "prose-invert prose-cyan",
+        isRetro && "prose-pink",
+        isCorporate && "prose-slate font-serif",
+        isFestival && "prose-orange",
+        "prose-headings:font-bold prose-headings:tracking-tight",
+        "prose-h1:text-5xl prose-h1:mb-8 prose-h1:border-b prose-h1:pb-4 prose-h1:text-center",
+        isPokemon && "prose-h1:text-red-600 prose-h1:border-gray-900 prose-h1:uppercase prose-h1:font-black prose-h1:tracking-widest",
+        isPokemon && "prose-h2:text-red-500 prose-h2:border-l-8 prose-h2:border-red-500 prose-h2:pl-4",
+        isPokemon && "prose-li:marker:text-red-600 prose-li:font-bold",
+        isPokemon && "prose-blockquote:bg-red-50 prose-blockquote:border-red-600 prose-blockquote:rounded-xl",
+        isCyberpunk && "prose-h1:text-cyan-400 prose-h1:border-magenta-500 prose-h1:italic",
+        isCorporate && "prose-h1:text-slate-900 prose-h1:border-slate-200 prose-h1:text-left prose-h1:font-serif",
+        isFestival && "prose-h1:text-orange-600 prose-h1:border-orange-200",
+        "prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4",
+        "prose-h3:text-2xl prose-h3:mt-8",
+        "prose-p:text-lg prose-p:leading-relaxed",
+        isCyberpunk && "prose-p:text-cyan-100",
+        isCorporate && "prose-p:text-slate-700",
+        "prose-blockquote:border-l-4 prose-blockquote:border-purple-500 prose-blockquote:bg-purple-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:not-italic prose-blockquote:text-gray-700",
+        isCyberpunk && "prose-blockquote:bg-gray-800 prose-blockquote:text-cyan-200 prose-blockquote:border-cyan-400",
+        isCorporate && "prose-blockquote:bg-slate-50 prose-blockquote:border-slate-900 prose-blockquote:text-slate-800",
+        isCorporate && "prose-li:marker:text-slate-900",
+        isFestival && "prose-li:marker:text-orange-500",
+        isPokemon && "prose-li:marker:text-red-600",
+        "prose-table:w-full prose-table:border-collapse",
+        "prose-th:bg-gray-50 prose-th:p-3 prose-th:text-left prose-th:border prose-th:border-gray-200",
+        isCyberpunk && "prose-th:bg-gray-800 prose-th:border-cyan-900 prose-th:text-cyan-400",
+        isCorporate && "prose-th:bg-slate-100 prose-th:border-slate-300",
+        "prose-td:p-3 prose-td:border prose-td:border-gray-200",
+        isCyberpunk && "prose-td:border-cyan-900 prose-td:text-cyan-100",
+        isCorporate && "prose-td:border-slate-200",
+      )}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {content}
+        </ReactMarkdown>
       </div>
     </div>
   );
-}
+};
 
-function BudgetRenderer({ data }: { data: any }) {
+function Pokeball({ className, isGrass, isFire }: { className?: string; isGrass?: boolean; isFire?: boolean }) {
   return (
-    <div className="bg-white p-8 shadow-lg rounded-xl border border-gray-100">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-green-100 p-3 rounded-xl text-green-600">
-          <DollarSign size={24} />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900">Budget Breakdown</h2>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-gray-200 mb-8">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
-              <th className="p-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Estimated Cost</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Notes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {data.items.map((item: any, i: number) => (
-              <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                <td className="p-4 text-sm font-semibold text-indigo-600">{item.category}</td>
-                <td className="p-4 text-sm text-gray-900">{item.item}</td>
-                <td className="p-4 text-sm font-bold text-right text-gray-900">${item.estimated_cost.toLocaleString()}</td>
-                <td className="p-4 text-xs text-gray-500 italic">{item.notes || '-'}</td>
-              </tr>
-            ))}
-            <tr className="bg-indigo-50 font-bold">
-              <td colSpan={2} className="p-4 text-indigo-700 uppercase tracking-widest text-xs">Total Estimated Cost</td>
-              <td className="p-4 text-right text-indigo-700 text-lg">${data.total_cost.toLocaleString()}</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Cost Efficiency</h3>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-gray-900">${data.cost_per_participant}</span>
-            <span className="text-sm text-gray-500">per participant</span>
-          </div>
-        </div>
-        <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-          <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4">Cost-Saving Tips</h3>
-          <ul className="space-y-2">
-            {data.cost_saving_tips.map((tip: string, i: number) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-indigo-700">
-                <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
-                {tip}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TimelineRenderer({ data }: { data: any }) {
-  return (
-    <div className="bg-white p-8 shadow-lg rounded-xl border border-gray-100">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600">
-          <Clock size={24} />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900">Event Schedule</h2>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-gray-200">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Time</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">Duration</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Responsible</th>
-              <th className="p-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {data.schedule.map((item: any, i: number) => (
-              <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                <td className="p-4 text-sm font-bold text-indigo-600">{item.time}</td>
-                <td className="p-4 text-sm font-semibold text-gray-900">{item.activity}</td>
-                <td className="p-4 text-xs text-gray-500">{item.duration}</td>
-                <td className="p-4 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    <User size={14} className="text-gray-400" />
-                    {item.responsible_person}
-                  </div>
-                </td>
-                <td className="p-4 text-xs text-gray-500 italic">{item.location}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function AnalyticsRenderer({ data }: { data: any }) {
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Estimated Reach</p>
-          <p className="text-3xl font-black text-indigo-600">{data.stats.estimated_reach.toLocaleString()}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Engagement Score</p>
-          <p className="text-3xl font-black text-violet-600">{data.stats.engagement_score}%</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Expected Attendance</p>
-          <p className="text-3xl font-black text-emerald-600">{data.stats.expected_attendance_rate}%</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Impact Score</p>
-          <p className="text-3xl font-black text-amber-600">{data.stats.impact_score}/10</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg">
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-8">Budget Distribution</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.charts.budget_distribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {data.charts.budget_distribution.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg">
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-8">Engagement Metrics</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.charts.engagement_metrics}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} />
-                <Bar dataKey="score" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg">
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <TrendingUp size={18} className="text-indigo-600" />
-          Strategic Recommendations
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data.recommendations.map((rec: string, i: number) => (
-            <div key={i} className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-              <div className="bg-white p-1.5 rounded-lg shadow-sm text-indigo-600">
-                <Info size={16} />
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SummaryRenderer({ data }: { data: any }) {
-  return (
-    <div className="space-y-8">
-      <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg">
-        <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4">Executive Summary</h3>
-        <p className="text-2xl text-gray-900 leading-relaxed font-serif italic">"{data.one_paragraph}"</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg flex flex-col">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Newsletter Version</h3>
-          <div className="text-sm text-gray-700 leading-relaxed flex-1 whitespace-pre-wrap">
-            {data.newsletter}
-          </div>
-          <button className="mt-6 w-full py-2 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all">
-            Copy for Email
-          </button>
-        </div>
-
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg flex flex-col">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Social Media Post</h3>
-          <div className="text-sm text-gray-700 leading-relaxed flex-1 whitespace-pre-wrap italic">
-            {data.social_media}
-          </div>
-          <button className="mt-6 w-full py-2 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all">
-            Copy for Social
-          </button>
-        </div>
-
-        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-lg flex flex-col">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Internal Memo</h3>
-          <div className="text-sm text-gray-700 leading-relaxed flex-1 whitespace-pre-wrap">
-            {data.memo}
-          </div>
-          <button className="mt-6 w-full py-2 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all">
-            Copy for Slack/Teams
-          </button>
-        </div>
+    <div className={cn("relative rounded-full border-4 border-gray-900 overflow-hidden bg-white", className)}>
+      <div className={cn("absolute top-0 left-0 w-full h-1/2", isGrass ? "bg-green-600" : isFire ? "bg-orange-600" : "bg-red-600")} />
+      <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-900 -translate-y-1/2" />
+      <div className="absolute top-1/2 left-1/2 w-1/3 h-1/3 bg-white border-4 border-gray-900 rounded-full -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+        <div className="w-1/2 h-1/2 bg-gray-200 rounded-full" />
       </div>
     </div>
   );

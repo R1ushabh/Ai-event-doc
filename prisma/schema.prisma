@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Event {
+  id           String        @id @default(cuid())
+  name         String
+  type         String
+  theme        String
+  audience     Int
+  date         DateTime
+  location     String
+  budgetRange  String
+  status       String        @default("PENDING")
+  createdAt    DateTime      @default(now())
+  documentSets DocumentSet[]
+}
+
+model DocumentSet {
+  id        String     @id @default(cuid())
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id])
+  status    String     @default("GENERATING")
+  documents Document[]
+}
+
+model Document {
+  id        String      @id @default(cuid())
+  setId     String
+  set       DocumentSet @relation(fields: [setId], references: [id])
+  type      String      // PROPOSAL, FLYER, BUDGET, TIMELINE, ATTENDANCE, SUMMARY
+  content   Json
+  status    String      @default("READY")
+  version   Int         @default(1)
+  createdAt DateTime    @default(now())
+}
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String?
+}

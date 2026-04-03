@@ -1,59 +1,44 @@
-import { EventDetails, GenerationResponse, DocumentOutput } from './types';
-import { extractEventDetails, generateDocument } from './gemini';
+import { masterPlannerAgent, subAgentCall } from "./gemini";
+import { EventDetails, DocType, DocumentOutput, BudgetJSON } from "./types";
 
-const TITLES: Record<string, string> = {
-  proposal: 'Event Proposal',
-  flyer: 'Event Flyer',
-  checklist: 'Planning Checklist',
-  budget: 'Budget Breakdown',
-  timeline: 'Event Schedule',
-  marketing: 'Marketing Plan',
-  report: 'Post-Event Report',
-  analytics: 'Event Analytics',
-  summary: 'Event Summary',
-  attendance: 'Attendance Sheet',
+export const extractEventDetails = async (input: string): Promise<EventDetails> => {
+  return await masterPlannerAgent(input);
 };
 
-export const api = {
-  async extractEvent(rawDescription: string): Promise<EventDetails> {
-    return extractEventDetails(rawDescription);
-  },
+export const generateDocument = async (
+  type: DocType,
+  details: EventDetails
+): Promise<DocumentOutput> => {
+  const content = await subAgentCall(type, details);
+  
+  const output: DocumentOutput = {
+    type,
+    title: getDocTitle(type),
+    content,
+  };
 
-  async generateAll(event: EventDetails, documentTypes: string[]): Promise<GenerationResponse> {
-    const start = Date.now();
-    const promises = documentTypes.map(async (type) => {
-      const content = await generateDocument(event, type);
-      const res = await fetch('/api/store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, title: TITLES[type] || type, content }),
-      });
-      if (!res.ok) throw new Error(`Failed to store ${type}`);
-      return res.json();
-    });
+  if (type === 'budget') {
+    try {
+      const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+      output.budgetData = JSON.parse(cleanContent) as BudgetJSON;
+    } catch (e) {
+      console.error("Failed to parse budget JSON:", e);
+    }
+  }
 
-    const documents = await Promise.all(promises);
-    
-    return {
-      success: true,
-      event_summary: event,
-      documents,
-      generation_time: (Date.now() - start) / 1000,
-    };
-  },
+  return output;
+};
 
-  async generateSingle(event: EventDetails, type: string): Promise<DocumentOutput> {
-    const content = await generateDocument(event, type);
-    const res = await fetch('/api/store', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, title: TITLES[type] || type, content }),
-    });
-    if (!res.ok) throw new Error(`Failed to store ${type}`);
-    return res.json();
-  },
-
-  getExportUrl(type: 'docx' | 'pdf' | 'csv', id: string): string {
-    return `/api/export/${type}/${id}`;
+const getDocTitle = (type: DocType): string => {
+  switch (type) {
+    case 'proposal': return "Event Proposal";
+    case 'flyer': return "Flyer Content";
+    case 'budget': return "Budget Estimate";
+    case 'timeline': return "Activity Timeline";
+    case 'report': return "Event Report";
+    case 'attendance': return "Attendance Sheet";
+    case 'summary': return "Quick Summary";
+    case 'analytics': return "Analytics";
+    default: return "Document";
   }
 };

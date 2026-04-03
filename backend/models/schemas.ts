@@ -15,6 +15,7 @@ export const EventDetailsSchema = z.object({
   activities: z.string().optional(),
   budget_preference: z.string().optional(),
   event_mode: z.string().default('offline'),
+  template_id: z.string().optional(),
   raw_description: z.string().optional(),
 });
 
