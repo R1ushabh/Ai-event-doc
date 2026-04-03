@@ -14,31 +14,48 @@ interface DocumentRendererProps {
 export const DocumentRenderer: React.FC<DocumentRendererProps> = ({ type, content, theme = '', className }) => {
   if (!content) return null;
 
-  const isPokemon = theme.toLowerCase().includes('pokemon');
-  const isGrass = isPokemon && (theme.toLowerCase().includes('grass') || theme.toLowerCase().includes('nature'));
-  const isFire = isPokemon && (theme.toLowerCase().includes('fire') || theme.toLowerCase().includes('blaze'));
+  const themeLower = theme.toLowerCase();
   
-  const isCyberpunk = theme.toLowerCase().includes('cyberpunk');
-  const isRetro = theme.toLowerCase().includes('retro') || theme.toLowerCase().includes('80s');
-  const isCorporate = theme.toLowerCase().includes('corporate') || theme.toLowerCase().includes('elegant');
-  const isFestival = theme.toLowerCase().includes('festival') || theme.toLowerCase().includes('vibrant');
+  // Style detection
+  const isMinimal = themeLower.includes('minimal');
+  const isAcademic = themeLower.includes('academic');
+  const isTech = themeLower.includes('tech') || themeLower.includes('cyberpunk');
+  const isFormal = themeLower.includes('formal') || themeLower.includes('institutional');
+  const isCreative = themeLower.includes('creative') || themeLower.includes('vibrant') || themeLower.includes('festival');
+  const isCorporate = themeLower.includes('corporate') || themeLower.includes('elegant');
   
+  const isPokemon = themeLower.includes('pokemon');
+  const isGrass = isPokemon && (themeLower.includes('grass') || themeLower.includes('nature'));
+  const isFire = isPokemon && (themeLower.includes('fire') || themeLower.includes('blaze'));
+
   const isFlyer = type === 'flyer';
 
   return (
     <div className={cn(
-      "w-full bg-white p-12 md:p-16 text-gray-900 font-sans relative overflow-hidden",
+      "w-full bg-white text-gray-900 font-sans relative overflow-hidden transition-all duration-500",
       isFlyer && "min-h-[1000px] flex flex-col",
+      
+      // Theme specific containers
+      isMinimal && "border-t-8 border-blue-500",
+      isAcademic && "border-t-8 border-emerald-500 font-serif",
+      isTech && "bg-slate-950 text-cyan-400 border-4 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.2)]",
+      isFormal && "border-t-[24px] border-slate-900 font-serif",
+      isCreative && "bg-rose-50 border-x-[12px] border-rose-500",
+      isCorporate && "border-t-[20px] border-indigo-900 font-serif",
+      
       isPokemon && "border-8 border-red-600",
       isGrass && "border-green-600 bg-green-50",
       isFire && "border-orange-600 bg-orange-50",
-      isCyberpunk && "bg-gray-900 text-cyan-400 border-4 border-magenta-500",
-      isRetro && "bg-pink-50 border-4 border-yellow-400",
-      isCorporate && "border-t-[20px] border-slate-900 font-serif",
-      isFestival && "bg-orange-50 border-x-[12px] border-orange-500",
+      
       className
     )}>
-      {/* Decorative Elements for Themes */}
+      {/* Decorative Elements */}
+      {isTech && isFlyer && (
+        <div className="absolute inset-0 pointer-events-none opacity-10">
+          <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(rgba(18,24,38,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(18,24,38,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        </div>
+      )}
+
       {isPokemon && isFlyer && (
         <>
           <div className={cn("absolute top-0 left-0 w-full h-12 z-0", isGrass ? "bg-green-600" : isFire ? "bg-orange-600" : "bg-red-600")} />
@@ -46,73 +63,42 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({ type, conten
             <div className="w-6 h-6 bg-gray-900 rounded-full" />
           </div>
           <div className="absolute top-12 left-0 w-full h-2 bg-gray-900 z-0" />
-          
-          {/* Corner Pokeballs */}
           <Pokeball isGrass={isGrass} isFire={isFire} className="absolute -top-4 -left-4 w-20 h-20 opacity-20 rotate-12" />
           <Pokeball isGrass={isGrass} isFire={isFire} className="absolute -bottom-4 -right-4 w-24 h-24 opacity-20 -rotate-12" />
-          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute top-1/2 -left-10 w-32 h-32 opacity-10" />
-          <Pokeball isGrass={isGrass} isFire={isFire} className="absolute top-1/4 -right-10 w-16 h-16 opacity-10" />
-        </>
-      )}
-
-      {isCorporate && isFlyer && (
-        <>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-100 -rotate-45 translate-x-32 -translate-y-32" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 border-l border-b border-slate-200" />
-        </>
-      )}
-
-      {isFestival && isFlyer && (
-        <>
-          <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-orange-500 via-yellow-400 to-red-500" />
-          <div className="absolute -top-10 -left-10 w-40 h-40 bg-yellow-400/20 rounded-full blur-3xl" />
-          <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-orange-500/10 rounded-full blur-3xl" />
-        </>
-      )}
-
-      {isCyberpunk && isFlyer && (
-        <>
-          <div className="absolute top-0 left-0 w-full h-1 bg-cyan-400 shadow-[0_0_10px_cyan]" />
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-magenta-500 shadow-[0_0_10px_magenta]" />
-          <div className="absolute top-10 right-10 w-20 h-20 border border-cyan-400/30 rotate-45" />
-          <div className="absolute bottom-20 left-10 w-32 h-32 border border-magenta-500/20 -rotate-12" />
         </>
       )}
 
       <div className={cn(
-        "relative z-10",
-        "prose prose-purple max-w-none",
-        isCyberpunk && "prose-invert prose-cyan",
-        isRetro && "prose-pink",
-        isCorporate && "prose-slate font-serif",
-        isFestival && "prose-orange",
+        "relative z-10 p-12 md:p-16",
+        "prose max-w-none",
+        
+        // Theme specific typography
+        isMinimal && "prose-blue prose-headings:text-blue-600",
+        isAcademic && "prose-emerald prose-headings:font-serif",
+        isTech && "prose-invert prose-purple prose-headings:text-cyan-400 prose-headings:italic",
+        isFormal && "prose-slate prose-headings:font-serif prose-headings:text-slate-900",
+        isCreative && "prose-rose prose-headings:text-rose-600",
+        isCorporate && "prose-indigo prose-headings:font-serif prose-headings:text-indigo-900",
+        
+        isPokemon && "prose-red prose-h1:text-red-600 prose-h1:uppercase prose-h1:font-black prose-h1:tracking-widest",
+        
         "prose-headings:font-bold prose-headings:tracking-tight",
-        "prose-h1:text-5xl prose-h1:mb-8 prose-h1:border-b prose-h1:pb-4 prose-h1:text-center",
-        isPokemon && "prose-h1:text-red-600 prose-h1:border-gray-900 prose-h1:uppercase prose-h1:font-black prose-h1:tracking-widest",
-        isPokemon && "prose-h2:text-red-500 prose-h2:border-l-8 prose-h2:border-red-500 prose-h2:pl-4",
-        isPokemon && "prose-li:marker:text-red-600 prose-li:font-bold",
-        isPokemon && "prose-blockquote:bg-red-50 prose-blockquote:border-red-600 prose-blockquote:rounded-xl",
-        isCyberpunk && "prose-h1:text-cyan-400 prose-h1:border-magenta-500 prose-h1:italic",
-        isCorporate && "prose-h1:text-slate-900 prose-h1:border-slate-200 prose-h1:text-left prose-h1:font-serif",
-        isFestival && "prose-h1:text-orange-600 prose-h1:border-orange-200",
-        "prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4",
+        "prose-h1:text-5xl prose-h1:mb-12 prose-h1:border-b prose-h1:pb-6 prose-h1:text-center",
+        "prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:border-l-4 prose-h2:pl-6 prose-h2:border-current",
         "prose-h3:text-2xl prose-h3:mt-8",
-        "prose-p:text-lg prose-p:leading-relaxed",
-        isCyberpunk && "prose-p:text-cyan-100",
-        isCorporate && "prose-p:text-slate-700",
-        "prose-blockquote:border-l-4 prose-blockquote:border-purple-500 prose-blockquote:bg-purple-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:not-italic prose-blockquote:text-gray-700",
-        isCyberpunk && "prose-blockquote:bg-gray-800 prose-blockquote:text-cyan-200 prose-blockquote:border-cyan-400",
-        isCorporate && "prose-blockquote:bg-slate-50 prose-blockquote:border-slate-900 prose-blockquote:text-slate-800",
-        isCorporate && "prose-li:marker:text-slate-900",
-        isFestival && "prose-li:marker:text-orange-500",
-        isPokemon && "prose-li:marker:text-red-600",
-        "prose-table:w-full prose-table:border-collapse",
-        "prose-th:bg-gray-50 prose-th:p-3 prose-th:text-left prose-th:border prose-th:border-gray-200",
-        isCyberpunk && "prose-th:bg-gray-800 prose-th:border-cyan-900 prose-th:text-cyan-400",
-        isCorporate && "prose-th:bg-slate-100 prose-th:border-slate-300",
-        "prose-td:p-3 prose-td:border prose-td:border-gray-200",
-        isCyberpunk && "prose-td:border-cyan-900 prose-td:text-cyan-100",
-        isCorporate && "prose-td:border-slate-200",
+        "prose-p:text-lg prose-p:leading-relaxed prose-p:text-gray-700",
+        isTech && "prose-p:text-cyan-100/80",
+        
+        "prose-blockquote:border-l-4 prose-blockquote:bg-gray-50 prose-blockquote:py-4 prose-blockquote:px-8 prose-blockquote:not-italic prose-blockquote:rounded-r-2xl",
+        isTech && "prose-blockquote:bg-slate-900 prose-blockquote:text-cyan-200 prose-blockquote:border-purple-500",
+        
+        "prose-table:w-full prose-table:border-collapse prose-table:my-8",
+        "prose-th:bg-gray-50 prose-th:p-4 prose-th:text-left prose-th:border prose-th:border-gray-200 prose-th:font-bold",
+        isTech && "prose-th:bg-slate-900 prose-th:border-purple-900 prose-th:text-cyan-400",
+        "prose-td:p-4 prose-td:border prose-td:border-gray-100",
+        isTech && "prose-td:border-purple-900/30 prose-td:text-cyan-100/70",
+        
+        "prose-img:rounded-3xl prose-img:shadow-lg"
       )}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {content}

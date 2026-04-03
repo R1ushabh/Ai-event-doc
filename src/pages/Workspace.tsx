@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, 
   FileText, 
@@ -10,13 +11,18 @@ import {
   Copy,
   CheckCircle2,
   Loader2,
-  Palette
+  Palette,
+  ArrowLeft,
+  ChevronRight,
+  Layout,
+  Check,
+  MoreHorizontal,
+  Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Orchestrator, OrchestratorEvent } from '@/ai/orchestrator';
 import { EventInput, DocType, DocumentOutput } from '@/ai/types';
 import { DocumentRenderer } from '@/components/documents/DocumentRenderer';
@@ -29,9 +35,27 @@ const DOC_TYPES: { id: DocType; label: string; icon: React.ElementType }[] = [
   { id: 'timeline', label: 'Timeline', icon: Clock },
 ];
 
+const EVENT_TYPES = [
+  'Workshop', 'Seminar', 'Hackathon', 'Webinar', 'Conference', 'Cultural Event', 'Training Program'
+];
+
+const STYLE_TEMPLATES = [
+  { id: 'minimal', label: 'Minimal Clean', color: 'bg-blue-500' },
+  { id: 'academic', label: 'Modern Academic', color: 'bg-emerald-500' },
+  { id: 'tech', label: 'Tech Neon', color: 'bg-purple-500' },
+  { id: 'formal', label: 'Formal Institutional', color: 'bg-slate-700' },
+  { id: 'creative', label: 'Creative Poster', color: 'bg-rose-500' },
+  { id: 'corporate', label: 'Elegant Corporate', color: 'bg-indigo-600' },
+];
+
 export default function Workspace() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
   const [prompt, setPrompt] = useState('');
   const [theme, setTheme] = useState('');
+  const [eventType, setEventType] = useState('Workshop');
+  const [selectedStyle, setSelectedStyle] = useState('minimal');
   const [requestedDocs, setRequestedDocs] = useState<DocType[]>(['proposal', 'flyer']);
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -41,6 +65,16 @@ export default function Workspace() {
   const [copied, setCopied] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const templateId = searchParams.get('template');
+    if (templateId) {
+      // Handle template pre-selection
+      if (templateId.includes('hackathon')) setEventType('Hackathon');
+      if (templateId.includes('seminar')) setEventType('Seminar');
+      if (templateId.includes('workshop')) setEventType('Workshop');
+    }
+  }, [searchParams]);
 
   const handleToggleDoc = (docId: DocType) => {
     setRequestedDocs(prev => 
@@ -54,21 +88,21 @@ export default function Workspace() {
     setIsGenerating(true);
     setGeneratedDocs([]);
     setActiveTab(null);
-    setProgress('Initializing AI Agents...');
+    setProgress('Understanding Event...');
 
     const input: EventInput = {
-      prompt,
-      theme: theme || 'Professional and standard',
+      prompt: `${eventType}: ${prompt}`,
+      theme: `${selectedStyle} style, ${theme || 'Professional'}`,
       requestedDocs
     };
 
     const orchestrator = new Orchestrator((event: OrchestratorEvent) => {
       if (event.type === 'agent_start') {
-        setProgress(`Agent working: ${event.agent}...`);
+        setProgress(`Drafting ${event.agent}...`);
       } else if (event.type === 'document_done') {
-        setProgress(`Generated: ${event.docType}`);
+        setProgress(`Finalizing ${event.docType}...`);
       } else if (event.type === 'generation_complete') {
-        setProgress('Finalizing documents...');
+        setProgress('Polishing documents...');
       }
     });
 
@@ -89,51 +123,24 @@ export default function Workspace() {
   const activeDoc = generatedDocs.find(d => d.type === activeTab);
 
   const handlePrint = async () => {
-    console.log("handlePrint called. activeTab:", activeTab);
-    console.log("generatedDocs count:", generatedDocs.length);
-    
-    if (!activeDoc) {
-      console.warn("No active document found to print.");
-      return;
-    }
-    
-    console.log("Starting PDF export for:", activeDoc.type, "Title:", activeDoc.title);
+    if (!activeDoc) return;
     try {
       const payload = {
         type: activeDoc.type,
         title: `${activeDoc.type.charAt(0).toUpperCase() + activeDoc.type.slice(1)} - ${theme || 'Event'}`,
         content: activeDoc.content,
-        template_id: 'custom'
+        template_id: selectedStyle
       };
-      console.log("Sending payload to /api/store:", payload);
-
-      // 1. Store the document in the backend to get an ID for export
       const storeResponse = await fetch('/api/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
-      if (!storeResponse.ok) {
-        const errorText = await storeResponse.text();
-        throw new Error(`Failed to store document: ${errorText}`);
-      }
-      
+      if (!storeResponse.ok) throw new Error('Failed to store document');
       const storedDoc = await storeResponse.json();
-      const docId = storedDoc.metadata?.id;
-      
-      if (!docId) throw new Error('No document ID returned from server');
-      
-      console.log("Document stored with ID:", docId);
-      
-      // 2. Trigger download from the export endpoint
-      // Using window.location.href is often more reliable than link.click() in some sandboxed environments
-      const downloadUrl = `/api/export/pdf/${docId}`;
-      window.location.href = downloadUrl;
-      
+      window.location.href = `/api/export/pdf/${storedDoc.metadata.id}`;
     } catch (error) {
       console.error("PDF Export failed:", error);
-      // Fallback to window.print() if backend fails
       window.print();
     }
   };
@@ -141,67 +148,93 @@ export default function Workspace() {
   const handleCopyRichText = () => {
     const docElement = contentRef.current;
     if (!docElement) return;
-
-    // Create a temporary contenteditable div to copy rich text
     const tempDiv = document.createElement('div');
     tempDiv.contentEditable = 'true';
     tempDiv.innerHTML = docElement.innerHTML;
     document.body.appendChild(tempDiv);
-    
-    // Select and copy
     const range = document.createRange();
     range.selectNodeContents(tempDiv);
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
-    
     document.execCommand('copy');
-    
     document.body.removeChild(tempDiv);
-    
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="flex h-screen bg-[#FAFAFA] overflow-hidden font-sans text-gray-900">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-text-primary">
       
-      {/* LEFT SIDEBAR - PROMPT & SETTINGS (Hidden when printing) */}
-      <aside className="w-[400px] bg-white border-r border-gray-200 flex flex-col shrink-0 print:hidden z-10 shadow-sm">
-        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
+      {/* LEFT PANEL - PROMPT & CONTROLS */}
+      <aside className="w-[450px] bg-surface border-r border-border flex flex-col shrink-0 print:hidden z-20 shadow-xl">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/home')} className="p-2 rounded-full hover:bg-panel transition-colors">
+              <ArrowLeft className="w-5 h-5 text-text-secondary" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary-accent flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight">Generator</h1>
+            </div>
           </div>
-          <h1 className="text-xl font-black tracking-tight">EventForge AI</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500">1. Describe your event</Label>
+        <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+          {/* Section 1: Describe Event */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-bold text-text-primary">Describe Your Event</Label>
+              <span className="text-[10px] font-bold text-primary-accent uppercase tracking-widest bg-primary-accent/5 px-2 py-0.5 rounded-full">AI Powered</span>
+            </div>
             <Textarea 
-              placeholder="e.g., Our college is hosting a 2-day hackathon for 500 students. We have a budget of $5000 and need sponsors."
-              className="min-h-[160px] resize-none text-base p-4 border-gray-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all rounded-xl shadow-sm"
+              placeholder="e.g., PCE is hosting a 2-day AI hackathon with a ₹1 lakh prize pool for engineering students."
+              className="min-h-[140px] resize-none text-base p-5 border-border bg-panel focus:bg-surface focus:ring-4 focus:ring-primary-accent/10 focus:border-primary-accent transition-all rounded-2xl shadow-inner"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
 
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              2. Custom Theme / Vibe
+          {/* Section 2: Event Type */}
+          <div className="space-y-4">
+            <Label className="text-sm font-bold text-text-primary">Event Type</Label>
+            <div className="flex flex-wrap gap-2">
+              {EVENT_TYPES.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setEventType(type)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                    eventType === type 
+                      ? "bg-primary-accent text-white border-primary-accent shadow-md" 
+                      : "bg-surface text-text-secondary border-border hover:border-text-secondary"
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 3: Theme */}
+          <div className="space-y-4">
+            <Label className="text-sm font-bold text-text-primary flex items-center gap-2">
+              <Palette className="w-4 h-4 text-primary-accent" />
+              Theme / Vibe
             </Label>
             <Input 
-              placeholder="e.g., Pokemon theme, Cyberpunk, Elegant Corporate"
-              className="h-12 text-base px-4 border-gray-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all rounded-xl shadow-sm"
+              placeholder="e.g., Cyberpunk, Elegant Corporate, Minimal Modern"
+              className="h-12 text-base px-5 border-border bg-panel focus:bg-surface focus:ring-4 focus:ring-primary-accent/10 focus:border-primary-accent transition-all rounded-2xl"
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
             />
-            <p className="text-[11px] text-gray-400 font-medium">The AI will heavily adapt the vocabulary and style to this theme.</p>
           </div>
 
+          {/* Section 4: Document Selection */}
           <div className="space-y-4">
-            <Label className="text-xs font-bold uppercase tracking-widest text-gray-500">3. Documents to Generate</Label>
+            <Label className="text-sm font-bold text-text-primary">Documents to Generate</Label>
             <div className="grid grid-cols-2 gap-3">
               {DOC_TYPES.map((doc) => {
                 const Icon = doc.icon;
@@ -211,129 +244,210 @@ export default function Workspace() {
                     key={doc.id}
                     onClick={() => handleToggleDoc(doc.id)}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                      "flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-all",
                       isSelected 
-                        ? "border-purple-600 bg-purple-50 text-purple-900 shadow-sm" 
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600"
+                        ? "border-primary-accent bg-primary-accent/5 text-primary-accent shadow-sm" 
+                        : "border-border bg-panel/30 hover:border-text-secondary text-text-secondary"
                     )}
                   >
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleDoc(doc.id)} className={cn(isSelected && "border-purple-600 bg-purple-600 text-white")} />
-                    <Icon className={cn("w-4 h-4", isSelected ? "text-purple-600" : "text-gray-400")} />
-                    <span className="text-sm font-semibold">{doc.label}</span>
+                    <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center transition-all", isSelected ? "bg-primary-accent border-primary-accent" : "bg-surface border-border")}>
+                      {isSelected && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <Icon className={cn("w-4 h-4", isSelected ? "text-primary-accent" : "text-text-secondary")} />
+                    <span className="text-xs font-bold">{doc.label}</span>
                   </div>
                 );
               })}
             </div>
           </div>
+
+          {/* Section 5: Template Style */}
+          <div className="space-y-4">
+            <Label className="text-sm font-bold text-text-primary">Template Style</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {STYLE_TEMPLATES.map(style => (
+                <div 
+                  key={style.id}
+                  onClick={() => setSelectedStyle(style.id)}
+                  className={cn(
+                    "p-3 rounded-2xl border cursor-pointer transition-all space-y-3",
+                    selectedStyle === style.id 
+                      ? "border-primary-accent bg-primary-accent/5 ring-2 ring-primary-accent/10" 
+                      : "border-border bg-panel/30 hover:border-text-secondary"
+                  )}
+                >
+                  <div className={`h-16 ${style.color} rounded-xl opacity-80 flex items-center justify-center`}>
+                    <Layout className="w-6 h-6 text-white/50" />
+                  </div>
+                  <p className={cn("text-[10px] font-bold text-center uppercase tracking-wider", selectedStyle === style.id ? "text-primary-accent" : "text-text-secondary")}>
+                    {style.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-8 border-t border-border bg-panel/30">
           <Button 
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim() || requestedDocs.length === 0}
-            className="w-full h-14 text-base font-bold rounded-xl shadow-lg shadow-purple-500/20 bg-purple-600 hover:bg-purple-700 text-white transition-all disabled:opacity-50 disabled:shadow-none"
+            className="w-full h-16 text-lg font-bold rounded-2xl shadow-xl shadow-primary-accent/20 bg-primary-accent hover:bg-accent-hover text-white transition-all disabled:opacity-50 disabled:shadow-none group"
           >
             {isGenerating ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <Loader2 className="w-6 h-6 mr-3 animate-spin" />
                 Generating...
               </>
             ) : (
               <>
-                <Sparkles className="w-5 h-5 mr-2" />
+                <Sparkles className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform" />
                 Generate Documents
               </>
             )}
           </Button>
           {isGenerating && (
-            <p className="text-center text-xs font-medium text-purple-600 mt-3 animate-pulse">
-              {progress}
-            </p>
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between text-[10px] font-bold text-primary-accent uppercase tracking-widest">
+                <span>{progress}</span>
+                <span>75%</span>
+              </div>
+              <div className="h-1.5 bg-primary-accent/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: '75%' }}
+                  className="h-full bg-primary-accent"
+                />
+              </div>
+            </div>
           )}
         </div>
       </aside>
 
-      {/* RIGHT MAIN AREA - PREVIEW */}
-      <main className="flex-1 flex flex-col relative bg-gray-100/50 print:bg-white print:absolute print:inset-0 print:w-full print:h-full">
+      {/* RIGHT PANEL - PREVIEW & WORKSPACE */}
+      <main className="flex-1 flex flex-col relative bg-panel/50 print:bg-white print:absolute print:inset-0 print:w-full print:h-full overflow-hidden">
         
         {generatedDocs.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center print:hidden">
-            <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
-              <FileText className="w-10 h-10 text-purple-400" />
-            </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Your Workspace is Empty</h2>
-            <p className="text-gray-500 max-w-md mb-8">Describe your event on the left, pick a theme, and let the AI generate professional, ready-to-export documents instantly.</p>
-            
-            <div className="flex flex-wrap gap-2 justify-center">
-              <BadgeSuggestion text="Try: A college hackathon with a retro 80s theme" onClick={() => {
-                setPrompt("Our college is hosting a 2-day hackathon for 500 students. We have a budget of $5000 and need sponsors.");
-                setTheme("Retro 80s Arcade");
-              }} />
-              <BadgeSuggestion text="Try: A Pokemon themed birthday party" onClick={() => {
-                setPrompt("A birthday party for a 10-year old who loves Pokemon. We need a flyer and a timeline.");
-                setTheme("Pokemon Adventure");
-                setRequestedDocs(['flyer', 'timeline']);
-              }} />
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-8 max-w-md"
+            >
+              <div className="w-24 h-24 bg-primary-accent/10 rounded-[40px] flex items-center justify-center mx-auto shadow-inner relative">
+                <FileText className="w-10 h-10 text-primary-accent" />
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-surface border border-border rounded-full flex items-center justify-center shadow-sm">
+                  <Sparkles className="w-4 h-4 text-primary-accent" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-3xl font-bold text-text-primary tracking-tight">Your AI Workspace</h2>
+                <p className="text-text-secondary leading-relaxed">Describe your event on the left, pick a style, and let the AI generate professional, ready-to-export documents instantly.</p>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                <BadgeSuggestion text="Try: A college hackathon with a retro 80s theme" onClick={() => {
+                  setPrompt("Our college is hosting a 2-day hackathon for 500 students. We have a budget of $5000 and need sponsors.");
+                  setTheme("Retro 80s Arcade");
+                  setEventType("Hackathon");
+                }} />
+                <BadgeSuggestion text="Try: A Pokemon themed birthday party" onClick={() => {
+                  setPrompt("A birthday party for a 10-year old who loves Pokemon. We need a flyer and a timeline.");
+                  setTheme("Pokemon Adventure");
+                  setEventType("Cultural Event");
+                  setRequestedDocs(['flyer', 'timeline']);
+                }} />
+              </div>
+            </motion.div>
           </div>
         ) : (
           <>
-            {/* Top Bar - Tabs & Actions (Hidden when printing) */}
-            <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 shrink-0 print:hidden shadow-sm z-10">
-              <div className="flex gap-1">
-                {generatedDocs.map(doc => {
-                  const config = DOC_TYPES.find(d => d.id === doc.type);
-                  const Icon = config?.icon || FileText;
-                  const isActive = activeTab === doc.type;
-                  return (
-                    <button
-                      key={doc.id}
-                      onClick={() => setActiveTab(doc.type)}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
-                        isActive 
-                          ? "bg-purple-100 text-purple-700" 
-                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {config?.label || doc.type}
-                    </button>
-                  );
-                })}
+            {/* Workspace Header */}
+            <header className="h-20 bg-surface border-b border-border px-8 flex items-center justify-between shrink-0 print:hidden z-10 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-bold text-text-primary truncate max-w-xs">{eventType}: {prompt.slice(0, 30)}...</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-primary-accent uppercase tracking-widest bg-primary-accent/5 px-2 py-0.5 rounded-full border border-primary-accent/10">
+                      {selectedStyle} Style
+                    </span>
+                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-panel px-2 py-0.5 rounded-full border border-border">
+                      {eventType}
+                    </span>
+                  </div>
+                </div>
               </div>
               
               <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={handleCopyRichText} className="h-9 font-bold text-xs uppercase tracking-widest bg-white">
-                  {copied ? <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" /> : <Copy className="w-4 h-4 mr-2" />}
+                <Button variant="outline" onClick={handleCopyRichText} className="h-11 px-5 rounded-xl font-bold text-xs uppercase tracking-widest bg-surface border-border hover:bg-panel transition-all">
+                  {copied ? <CheckCircle2 className="w-4 h-4 mr-2 text-success" /> : <Copy className="w-4 h-4 mr-2" />}
                   {copied ? 'Copied!' : 'Copy to Docs'}
                 </Button>
-                <Button onClick={handlePrint} className="h-9 font-bold text-xs uppercase tracking-widest bg-gray-900 hover:bg-gray-800 text-white shadow-md">
-                  <Download className="w-4 h-4 mr-2" />
+                <Button onClick={handlePrint} className="h-11 px-6 rounded-xl font-bold text-xs uppercase tracking-widest bg-text-primary hover:bg-black text-white shadow-lg transition-all flex items-center gap-2">
+                  <Download className="w-4 h-4" />
                   Save PDF
                 </Button>
+                <div className="w-px h-6 bg-border mx-2" />
+                <button className="p-2 rounded-xl hover:bg-panel transition-colors">
+                  <Share2 className="w-5 h-5 text-text-secondary" />
+                </button>
+                <button className="p-2 rounded-xl hover:bg-panel transition-colors">
+                  <MoreHorizontal className="w-5 h-5 text-text-secondary" />
+                </button>
               </div>
+            </header>
+
+            {/* Document Tabs */}
+            <div className="bg-surface border-b border-border px-8 flex items-center gap-1 shrink-0 print:hidden">
+              {generatedDocs.map(doc => {
+                const config = DOC_TYPES.find(d => d.id === doc.type);
+                const Icon = config?.icon || FileText;
+                const isActive = activeTab === doc.type;
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => setActiveTab(doc.type)}
+                    className={cn(
+                      "flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all relative",
+                      isActive 
+                        ? "text-primary-accent" 
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {config?.label || doc.type}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeTab"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-accent"
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Document Preview Area */}
-            <div className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible">
+            <div className="flex-1 overflow-y-auto p-12 print:p-0 print:overflow-visible custom-scrollbar bg-panel/30">
               <AnimatePresence mode="wait">
                 {activeDoc && (
                   <motion.div
                     key={activeDoc.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.02 }}
+                    transition={{ duration: 0.3 }}
                     className="flex justify-center print:block"
                   >
                     {/* A4 Page Container */}
                     <div 
                       ref={contentRef}
                       id="printable-document"
-                      className="w-full max-w-[850px] bg-white shadow-xl rounded-sm print:shadow-none print:rounded-none print:max-w-none print:w-full"
+                      className="w-full max-w-[850px] bg-surface shadow-[0_0_50px_rgba(0,0,0,0.05)] rounded-2xl border border-border overflow-hidden print:shadow-none print:rounded-none print:max-w-none print:w-full print:border-none"
                     >
-                      <DocumentRenderer type={activeDoc.type} content={activeDoc.content} theme={theme} />
+                      <div className="p-12 md:p-16">
+                        <DocumentRenderer type={activeDoc.type} content={activeDoc.content} theme={theme} />
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -350,9 +464,10 @@ function BadgeSuggestion({ text, onClick }: { text: string, onClick: () => void 
   return (
     <button 
       onClick={onClick}
-      className="text-xs font-medium bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full hover:border-purple-300 hover:text-purple-700 transition-colors shadow-sm"
+      className="text-sm font-medium bg-surface border border-border text-text-secondary px-5 py-3 rounded-2xl hover:border-primary-accent hover:text-primary-accent hover:bg-primary-accent/5 transition-all shadow-sm text-left flex items-center justify-between group"
     >
       {text}
+      <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
     </button>
   );
 }
